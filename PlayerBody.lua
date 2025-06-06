@@ -1,283 +1,432 @@
--- PlayerBody.lua - Класс для управления всеми частями тела игрока в Roblox
-local PlayerBody = {}
-PlayerBody.__index = PlayerBody
+-- Исправленный скрипт для Roblox ESP Suite
+-- Версия с улучшенной отладкой и обработкой ошибок
 
--- Конструктор класса
-function PlayerBody.new(player)
-    local self = setmetatable({}, PlayerBody)
+print("=== ЗАПУСК TRIDEN ESP SUITE ===")
+
+-- Функция безопасной загрузки
+local function safeLoadstring(url, name)
+    print("[LOAD] Загружаем " .. name .. "...")
+    local success, result = pcall(function()
+        return loadstring(game:HttpGet(url))()
+    end)
     
-    -- Ссылка на игрока
-    self.Player = player or game.Players.LocalPlayer
-    
-    -- Ссылка на модель персонажа
-    self.Character = self.Player.Character or self.Player.CharacterAdded:Wait()
-    
-    -- Инициализация всех частей тела
-    self:InitializeBodyParts()
-    
-    return self
+    if success then
+        print("[SUCCESS] " .. name .. " загружен успешно")
+        return result
+    else
+        warn("[ERROR] Ошибка загрузки " .. name .. ": " .. tostring(result))
+        return nil
+    end
 end
 
--- Инициализация всех частей тела
-function PlayerBody:InitializeBodyParts()
-    -- Основные части тела
-    self.BodyParts = {
-        -- Голова и шея
-        Head = self.Character:FindFirstChild("Head"),
+-- Проверка HTTP
+if not game:GetService("HttpService").HttpEnabled then
+    warn("[CRITICAL] HTTP запросы отключены!")
+    return
+end
+
+-- Загрузка основных библиотек
+print("[INFO] Загружаем основные библиотеки...")
+
+local Fluent = safeLoadstring("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua", "Fluent UI")
+if not Fluent then
+    error("[CRITICAL] Не удалось загрузить Fluent UI!")
+end
+
+local SaveManager = safeLoadstring("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua", "SaveManager")
+local InterfaceManager = safeLoadstring("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua", "InterfaceManager")
+
+print("[INFO] Основные библиотеки загружены")
+
+-- Создание окна
+print("[INFO] Создаем интерфейс...")
+
+local Window = Fluent:CreateWindow({
+    Title = "Triden ESP Suite v2.0",
+    SubTitle = "Исправленная версия",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(600, 500),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.LeftControl
+})
+
+print("[SUCCESS] Окно создано")
+
+-- Создание вкладок
+local Tabs = {
+    Main = Window:AddTab({ Title = "Главная", Icon = "home" }),
+    ESP = Window:AddTab({ Title = "ESP", Icon = "eye" }),
+    Player = Window:AddTab({ Title = "Игрок", Icon = "user" }),
+    Teleport = Window:AddTab({ Title = "Телепорт", Icon = "zap" }),
+    Settings = Window:AddTab({ Title = "Настройки", Icon = "settings" })
+}
+
+print("[SUCCESS] Вкладки созданы")
+
+local Options = Fluent.Options
+
+-- === ГЛАВНАЯ ВКЛАДКА ===
+Tabs.Main:AddParagraph({
+    Title = "Добро пожаловать в Triden ESP Suite! 🎮",
+    Content = "Этот скрипт предоставляет множество функций для улучшения игрового опыта.\n\n• ESP - визуализация игроков\n• Телепорт - быстрое перемещение\n• Настройки персонажа\n\nИспользуйте LeftControl для сворачивания интерфейса."
+})
+
+-- Статус системы
+local statusText = "🟢 Fluent UI: Загружен\n"
+statusText = statusText .. (SaveManager and "🟢 SaveManager: Загружен\n" or "🔴 SaveManager: Ошибка\n")
+statusText = statusText .. (InterfaceManager and "🟢 InterfaceManager: Загружен" or "🔴 InterfaceManager: Ошибка")
+
+Tabs.Main:AddParagraph({
+    Title = "Статус модулей",
+    Content = statusText
+})
+
+-- Кнопка тестирования
+Tabs.Main:AddButton({
+    Title = "Тест уведомлений",
+    Description = "Проверить работу системы уведомлений",
+    Callback = function()
+        Fluent:Notify({
+            Title = "Тест пройден! ✅",
+            Content = "Система уведомлений работает корректно",
+            Duration = 3
+        })
+    end
+})
+
+-- === ESP ВКЛАДКА ===
+print("[INFO] Настраиваем ESP...")
+
+-- Переменные для ESP
+local espEnabled = false
+local espBoxes = {}
+local espConnections = {}
+
+-- Функция создания ESP для игрока
+local function createESP(player)
+    if player == game.Players.LocalPlayer then return end
+    
+    local function addESP()
+        local character = player.Character or player.CharacterAdded:Wait()
+        local humanoidRootPart = character:WaitForChild("HumanoidRootPart", 5)
         
-        -- Туловище
-        Torso = self.Character:FindFirstChild("Torso"),
-        UpperTorso = self.Character:FindFirstChild("UpperTorso"),
-        LowerTorso = self.Character:FindFirstChild("LowerTorso"),
+        if not humanoidRootPart then return end
         
-        -- Руки
-        LeftArm = self.Character:FindFirstChild("LeftArm"),
-        RightArm = self.Character:FindFirstChild("RightArm"),
-        LeftUpperArm = self.Character:FindFirstChild("LeftUpperArm"),
-        RightUpperArm = self.Character:FindFirstChild("RightUpperArm"),
-        LeftLowerArm = self.Character:FindFirstChild("LeftLowerArm"),
-        RightLowerArm = self.Character:FindFirstChild("RightLowerArm"),
+        -- Создаем BillboardGui
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "ESP_" .. player.Name
+        billboard.Adornee = humanoidRootPart
+        billboard.Size = UDim2.new(4, 0, 6, 0)
+        billboard.StudsOffset = Vector3.new(0, 0, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = game.CoreGui
         
-        -- Кисти рук
-        LeftHand = self.Character:FindFirstChild("LeftHand"),
-        RightHand = self.Character:FindFirstChild("RightHand"),
+        -- Создаем рамку
+        local frame = Instance.new("Frame")
+        frame.Size = UDim2.new(1, 0, 1, 0)
+        frame.BackgroundTransparency = 1
+        frame.BorderSizePixel = 2
+        frame.BorderColor3 = Color3.fromRGB(0, 255, 0)
+        frame.Parent = billboard
         
-        -- Ноги
-        LeftLeg = self.Character:FindFirstChild("LeftLeg"),
-        RightLeg = self.Character:FindFirstChild("RightLeg"),
-        LeftUpperLeg = self.Character:FindFirstChild("LeftUpperLeg"),
-        RightUpperLeg = self.Character:FindFirstChild("RightUpperLeg"),
-        LeftLowerLeg = self.Character:FindFirstChild("LeftLowerLeg"),
-        RightLowerLeg = self.Character:FindFirstChild("RightLowerLeg"),
+        -- Добавляем текст с именем
+        local nameLabel = Instance.new("TextLabel")
+        nameLabel.Size = UDim2.new(1, 0, 0, 20)
+        nameLabel.Position = UDim2.new(0, 0, -0.1, 0)
+        nameLabel.BackgroundTransparency = 1
+        nameLabel.Text = player.Name
+        nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+        nameLabel.TextStrokeTransparency = 0
+        nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+        nameLabel.Font = Enum.Font.GothamBold
+        nameLabel.TextScaled = true
+        nameLabel.Parent = billboard
         
-        -- Стопы
-        LeftFoot = self.Character:FindFirstChild("LeftFoot"),
-        RightFoot = self.Character:FindFirstChild("RightFoot")
-    }
+        espBoxes[player] = billboard
+    end
     
-    -- Удаляем несуществующие части
-    for partName, part in pairs(self.BodyParts) do
-        if not part then
-            self.BodyParts[partName] = nil
+    if player.Character then
+        addESP()
+    end
+    
+    espConnections[player] = player.CharacterAdded:Connect(addESP)
+end
+
+-- Функция удаления ESP
+local function removeESP(player)
+    if espBoxes[player] then
+        espBoxes[player]:Destroy()
+        espBoxes[player] = nil
+    end
+    if espConnections[player] then
+        espConnections[player]:Disconnect()
+        espConnections[player] = nil
+    end
+end
+
+-- Функция обновления ESP для всех игроков
+local function updateESP()
+    if espEnabled then
+        for _, player in pairs(game.Players:GetPlayers()) do
+            if not espBoxes[player] then
+                createESP(player)
+            end
+        end
+    else
+        for player, _ in pairs(espBoxes) do
+            removeESP(player)
         end
     end
 end
 
--- Получить все существующие части тела
-function PlayerBody:GetAllParts()
-    return self.BodyParts
-end
+-- ESP контролы
+Tabs.ESP:AddToggle("ESPToggle", {
+    Title = "Включить ESP",
+    Description = "Показывать рамки вокруг игроков",
+    Default = false
+}):OnChanged(function(value)
+    espEnabled = value
+    updateESP()
+    print("[ESP] ESP " .. (value and "включен" or "выключен"))
+end)
 
--- Получить конкретную часть тела
-function PlayerBody:GetPart(partName)
-    return self.BodyParts[partName]
-end
+-- Цвет ESP
+local ESPColor = Tabs.ESP:AddColorpicker("ESPColor", {
+    Title = "Цвет ESP",
+    Description = "Изменить цвет рамок",
+    Default = Color3.fromRGB(0, 255, 0)
+})
 
--- Проверить, существует ли часть тела
-function PlayerBody:HasPart(partName)
-    return self.BodyParts[partName] ~= nil
-end
-
--- Получить количество частей тела
-function PlayerBody:GetPartCount()
-    local count = 0
-    for _, _ in pairs(self.BodyParts) do
-        count = count + 1
+ESPColor:OnChanged(function()
+    local color = ESPColor.Value
+    for _, billboard in pairs(espBoxes) do
+        if billboard and billboard:FindFirstChild("Frame") then
+            billboard.Frame.BorderColor3 = color
+        end
     end
-    return count
-end
+end)
 
--- Применить функцию ко всем частям тела
-function PlayerBody:ForEachPart(callback)
-    for partName, part in pairs(self.BodyParts) do
-        callback(partName, part)
+-- Обработчики подключения/отключения игроков
+game.Players.PlayerAdded:Connect(function(player)
+    if espEnabled then
+        createESP(player)
+    end
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    removeESP(player)
+end)
+
+-- === ВКЛАДКА ИГРОКА ===
+print("[INFO] Настраиваем управление игроком...")
+
+-- Скорость ходьбы
+local WalkSpeedSlider = Tabs.Player:AddSlider("WalkSpeed", {
+    Title = "Скорость ходьбы",
+    Description = "Изменить скорость передвижения",
+    Default = 16,
+    Min = 1,
+    Max = 100,
+    Rounding = 1
+})
+
+WalkSpeedSlider:OnChanged(function(value)
+    local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        humanoid.WalkSpeed = value
+    end
+end)
+
+-- Высота прыжка
+local JumpPowerSlider = Tabs.Player:AddSlider("JumpPower", {
+    Title = "Сила прыжка",
+    Description = "Изменить высоту прыжка",
+    Default = 50,
+    Min = 1,
+    Max = 200,
+    Rounding = 1
+})
+
+JumpPowerSlider:OnChanged(function(value)
+    local humanoid = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("Humanoid")
+    if humanoid then
+        if humanoid.JumpPower then
+            humanoid.JumpPower = value
+        elseif humanoid.JumpHeight then
+            humanoid.JumpHeight = value
+        end
+    end
+end)
+
+-- Невидимость
+Tabs.Player:AddToggle("Invisible", {
+    Title = "Невидимость",
+    Description = "Сделать персонажа невидимым",
+    Default = false
+}):OnChanged(function(value)
+    local character = game.Players.LocalPlayer.Character
+    if character then
+        for _, part in pairs(character:GetChildren()) do
+            if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+                part.Transparency = value and 1 or 0
+            elseif part:IsA("Accessory") then
+                part.Handle.Transparency = value and 1 or 0
+            end
+        end
+    end
+end)
+
+-- Полет
+local flying = false
+local flyConnection
+
+local function toggleFly(enabled)
+    flying = enabled
+    local character = game.Players.LocalPlayer.Character
+    local humanoidRootPart = character and character:FindFirstChild("HumanoidRootPart")
+    
+    if not humanoidRootPart then return end
+    
+    if flying then
+        local bodyVelocity = Instance.new("BodyVelocity")
+        bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+        bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+        bodyVelocity.Parent = humanoidRootPart
+        
+        flyConnection = game:GetService("RunService").Heartbeat:Connect(function()
+            local camera = workspace.CurrentCamera
+            local moveVector = game.Players.LocalPlayer:GetMouse()
+            
+            bodyVelocity.Velocity = Vector3.new(0, 0, 0)
+            
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.W) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity + camera.CFrame.LookVector * 50
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.S) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity - camera.CFrame.LookVector * 50
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.A) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity - camera.CFrame.RightVector * 50
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.D) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity + camera.CFrame.RightVector * 50
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.Space) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity + Vector3.new(0, 50, 0)
+            end
+            if game:GetService("UserInputService"):IsKeyDown(Enum.KeyCode.LeftShift) then
+                bodyVelocity.Velocity = bodyVelocity.Velocity - Vector3.new(0, 50, 0)
+            end
+        end)
+    else
+        if flyConnection then
+            flyConnection:Disconnect()
+        end
+        if humanoidRootPart:FindFirstChild("BodyVelocity") then
+            humanoidRootPart.BodyVelocity:Destroy()
+        end
     end
 end
 
--- Изменить прозрачность всех частей тела
-function PlayerBody:SetTransparency(transparency)
-    self:ForEachPart(function(partName, part)
-        if part then
-            part.Transparency = transparency
-        end
-    end)
-end
+Tabs.Player:AddToggle("Fly", {
+    Title = "Полет",
+    Description = "Включить режим полета (WASD для управления)",
+    Default = false
+}):OnChanged(function(value)
+    toggleFly(value)
+end)
 
--- Изменить цвет всех частей тела
-function PlayerBody:SetColor(color)
-    self:ForEachPart(function(partName, part)
-        if part then
-            part.Color = color
-        end
-    end)
-end
+-- === ВКЛАДКА ТЕЛЕПОРТА ===
+print("[INFO] Настраиваем телепорт...")
 
--- Изменить материал всех частей тела
-function PlayerBody:SetMaterial(material)
-    self:ForEachPart(function(partName, part)
-        if part then
-            part.Material = material
-        end
-    end)
-end
-
--- Сделать все части тела невидимыми
-function PlayerBody:MakeInvisible()
-    self:SetTransparency(1)
-end
-
--- Сделать все части тела видимыми
-function PlayerBody:MakeVisible()
-    self:SetTransparency(0)
-end
-
--- Включить/выключить CanCollide для всех частей
-function PlayerBody:SetCanCollide(canCollide)
-    self:ForEachPart(function(partName, part)
-        if part then
-            part.CanCollide = canCollide
-        end
-    end)
-end
-
--- Получить позицию центра тела (обычно торс)
-function PlayerBody:GetCenterPosition()
-    local torso = self.BodyParts.Torso or self.BodyParts.UpperTorso
-    if torso then
-        return torso.Position
-    end
-    return Vector3.new(0, 0, 0)
-end
-
--- Получить HumanoidRootPart (если есть)
-function PlayerBody:GetRootPart()
-    return self.Character:FindFirstChild("HumanoidRootPart")
-end
-
--- Получить Humanoid (если есть)
-function PlayerBody:GetHumanoid()
-    return self.Character:FindFirstChildOfClass("Humanoid")
-end
-
--- Обновить ссылки на части тела (полезно после респавна)
-function PlayerBody:RefreshBodyParts()
-    self.Character = self.Player.Character
-    if self.Character then
-        self:InitializeBodyParts()
+-- Телепорт к игроку
+local playerNames = {}
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then
+        table.insert(playerNames, player.Name)
     end
 end
 
--- Подключить обновление при смене персонажа
-function PlayerBody:ConnectCharacterAdded()
-    self.Player.CharacterAdded:Connect(function(character)
-        self.Character = character
-        self:InitializeBodyParts()
-    end)
-end
-
--- Получить информацию о частях тела в виде таблицы
-function PlayerBody:GetBodyInfo()
-    local info = {
-        PlayerName = self.Player.Name,
-        CharacterName = self.Character.Name,
-        PartCount = self:GetPartCount(),
-        Parts = {}
-    }
-    
-    self:ForEachPart(function(partName, part)
-        info.Parts[partName] = {
-            Name = part.Name,
-            Position = part.Position,
-            Size = part.Size,
-            Transparency = part.Transparency,
-            Color = part.Color,
-            Material = part.Material.Name
-        }
-    end)
-    
-    return info
-end
-
--- Метод для интеграции с Fluent GUI
-function PlayerBody:CreateFluentControls(tab)
-    if not tab then
-        warn("PlayerBody: Не передан Tab для создания контролов")
-        return
-    end
-    
-    -- Параграф с информацией
-    tab:AddParagraph({
-        Title = "Player Body Info",
-        Content = "Игрок: " .. self.Player.Name .. "\nЧастей тела: " .. self:GetPartCount()
-    })
-    
-    -- Слайдер прозрачности
-    local TransparencySlider = tab:AddSlider("BodyTransparency", {
-        Title = "Прозрачность тела",
-        Description = "Изменить прозрачность всех частей тела",
-        Default = 0,
-        Min = 0,
-        Max = 1,
-        Rounding = 2,
-        Callback = function(Value)
-            self:SetTransparency(Value)
-        end
-    })
-    
-    -- Переключатель коллизии
-    local CollisionToggle = tab:AddToggle("BodyCollision", {
-        Title = "Коллизия тела", 
-        Default = true,
-        Callback = function(Value)
-            self:SetCanCollide(Value)
-        end
-    })
-    
-    -- Кнопки быстрых действий
-    tab:AddButton({
-        Title = "Сделать невидимым",
-        Description = "Полностью скрыть тело",
-        Callback = function()
-            self:MakeInvisible()
-            TransparencySlider:SetValue(1)
-        end
-    })
-    
-    tab:AddButton({
-        Title = "Сделать видимым",
-        Description = "Показать тело",
-        Callback = function()
-            self:MakeVisible()
-            TransparencySlider:SetValue(0)
-        end
-    })
-    
-    -- Выпадающий список материалов
-    local MaterialDropdown = tab:AddDropdown("BodyMaterial", {
-        Title = "Материал тела",
-        Values = {"Plastic", "Wood", "Slate", "Concrete", "CorrodedMetal", "DiamondPlate", "Foil", "Grass", "Ice", "Marble", "Granite", "Brick", "Pebble", "Sand", "Fabric", "SmoothPlastic", "Metal", "WoodPlanks", "Cobblestone", "Neon", "Glass"},
+if #playerNames > 0 then
+    local TeleportDropdown = Tabs.Teleport:AddDropdown("TeleportPlayer", {
+        Title = "Телепорт к игроку",
+        Description = "Выберите игрока для телепортации",
+        Values = playerNames,
         Multi = false,
-        Default = "Plastic",
-        Callback = function(Value)
-            self:SetMaterial(Enum.Material[Value])
-        end
+        Default = playerNames[1]
     })
     
-    -- Кнопка обновления
-    tab:AddButton({
-        Title = "Обновить части тела",
-        Description = "Обновить ссылки на части тела",
+    Tabs.Teleport:AddButton({
+        Title = "Телепортироваться",
+        Description = "Телепортироваться к выбранному игроку",
         Callback = function()
-            self:RefreshBodyParts()
+            local selectedPlayer = game.Players:FindFirstChild(Options.TeleportPlayer.Value)
+            if selectedPlayer and selectedPlayer.Character and selectedPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                local localPlayer = game.Players.LocalPlayer
+                if localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart") then
+                    localPlayer.Character.HumanoidRootPart.CFrame = selectedPlayer.Character.HumanoidRootPart.CFrame
+                    Fluent:Notify({
+                        Title = "Телепорт выполнен! ✅",
+                        Content = "Вы телепортировались к " .. selectedPlayer.Name,
+                        Duration = 3
+                    })
+                end
+            end
         end
+    })
+else
+    Tabs.Teleport:AddParagraph({
+        Title = "Нет доступных игроков",
+        Content = "В игре нет других игроков для телепортации"
     })
 end
 
--- Деструктор (очистка ресурсов)
-function PlayerBody:Destroy()
-    self.Player = nil
-    self.Character = nil
-    self.BodyParts = nil
+-- === НАСТРОЙКИ ===
+if SaveManager and InterfaceManager then
+    print("[INFO] Настраиваем SaveManager...")
+    
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
+    SaveManager:IgnoreThemeSettings()
+    SaveManager:SetIgnoreIndexes({})
+    
+    InterfaceManager:SetFolder("TridenESP")
+    SaveManager:SetFolder("TridenESP/configs")
+    
+    InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+    SaveManager:BuildConfigSection(Tabs.Settings)
+    
+    print("[SUCCESS] SaveManager настроен")
 end
 
-return PlayerBody
+-- Выбираем первую вкладку
+Window:SelectTab(1)
+
+-- Загружаем сохраненные настройки
+if SaveManager then
+    SaveManager:LoadAutoloadConfig()
+end
+
+-- Финальные уведомления
+Fluent:Notify({
+    Title = "Triden ESP Suite загружен! 🚀",
+    Content = "Все функции готовы к использованию. Нажмите LeftControl для сворачивания.",
+    Duration = 5
+})
+
+print("=== TRIDEN ESP SUITE УСПЕШНО ЗАПУЩЕН ===")
+
+-- Команда отладки в чат
+game.Players.LocalPlayer.Chatted:Connect(function(message)
+    if message:lower() == "/debug" then
+        print("=== ОТЛАДОЧНАЯ ИНФОРМАЦИЯ ===")
+        print("Fluent UI: " .. (Fluent and "✅ OK" or "❌ ERROR"))
+        print("SaveManager: " .. (SaveManager and "✅ OK" or "❌ ERROR"))
+        print("InterfaceManager: " .. (InterfaceManager and "✅ OK" or "❌ ERROR"))
+        print("ESP активен: " .. (espEnabled and "✅ ДА" or "❌ НЕТ"))
+        print("ESP объектов: " .. tostring(#espBoxes))
+        print("Полет активен: " .. (flying and "✅ ДА" or "❌ НЕТ"))
+        print("===============================")
+    end
+end)
