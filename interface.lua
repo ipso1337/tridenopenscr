@@ -42,20 +42,21 @@ Tabs.Main:AddParagraph({
     Content = "Это твой кастомный Roblox скрипт.\nПриятного использования!"
 })
 
-Tabs.Main:AddButton({
-    Title = "Тест функции",
-    Description = "Нажми для теста",
-    Callback = function()
-        Functions.testFunction()
-    end
-})
-
 -- === FEATURES TAB ===
 Tabs.Features:AddToggle("BoxESP_Toggle", {
     Title = "Box ESP",
     Default = false
 }):OnChanged(function(state)
     BoxESP:Toggle(state)
+end)
+
+Tabs.Features:AddDropdown("BoxESP_Mode", {
+    Title = "Box Type",
+    Values = {"Box", "Corner", "3D Box"},
+    Multi = false,
+    Default = 1
+}):OnChanged(function(mode)
+    BoxESP:SetBoxType(mode)
 end)
 
 -- === SETTINGS TAB ===
@@ -71,13 +72,9 @@ SaveManager:SetFolder("TridenClient/configs")
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
--- Выбор первой вкладки
 Window:SelectTab(1)
-
--- Автозагрузка конфигурации
 SaveManager:LoadAutoloadConfig()
 
--- Финальное уведомление
 Fluent:Notify({
     Title = "Готово!",
     Content = "Все функции успешно загружены.",
