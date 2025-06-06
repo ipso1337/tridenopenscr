@@ -1,12 +1,11 @@
--- Загрузка библиотек Fluent UI
+-- interface.lua
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Загрузка функций (замените YOUR_USERNAME и YOUR_REPO_NAME на свои)
 local Functions = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/refs/heads/main/functions.lua"))()
+local ESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/refs/heads/main/BoxESP.lua"))()
 
--- Создание окна
 local Window = Fluent:CreateWindow({
     Title = "Your Script Name",
     SubTitle = "by YourName",
@@ -17,7 +16,6 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- Создание вкладок
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "" }),
     Features = Window:AddTab({ Title = "Features", Icon = "zap" }),
@@ -39,20 +37,20 @@ Tabs.Main:AddParagraph({
     Content = "This is your custom Roblox script.\nEnjoy using it!"
 })
 
--- Пример кнопки
 Tabs.Main:AddButton({
     Title = "Test Function",
     Description = "Click to test a function",
     Callback = function()
-        Functions.testFunction() -- Вызов функции из functions.lua
+        Functions.testFunction()
     end
 })
 
 -- === FEATURES TAB ===
--- Переключатель
+
+-- Включение фичи
 local FeatureToggle = Tabs.Features:AddToggle("FeatureToggle", {
-    Title = "Enable Feature", 
-    Default = false 
+    Title = "Enable Feature",
+    Default = false
 })
 
 FeatureToggle:OnChanged(function()
@@ -63,7 +61,7 @@ FeatureToggle:OnChanged(function()
     end
 end)
 
--- Слайдер
+-- Слайдер скорости
 local SpeedSlider = Tabs.Features:AddSlider("SpeedSlider", {
     Title = "Speed",
     Description = "Adjust the speed",
@@ -71,46 +69,46 @@ local SpeedSlider = Tabs.Features:AddSlider("SpeedSlider", {
     Min = 1,
     Max = 100,
     Rounding = 1,
-    Callback = function(Value)
-        Functions.setSpeed(Value)
+    Callback = function(value)
+        Functions.setSpeed(value)
     end
 })
 
--- Выпадающий список
+-- Выпадающий список для выбора режима
 local ModeDropdown = Tabs.Features:AddDropdown("ModeDropdown", {
     Title = "Mode",
     Values = {"Mode 1", "Mode 2", "Mode 3"},
     Multi = false,
-    Default = 1,
+    Default = 1
 })
 
-ModeDropdown:OnChanged(function(Value)
-    Functions.changeMode(Value)
+ModeDropdown:OnChanged(function(value)
+    Functions.changeMode(value)
 end)
 
--- Привязка клавиш
+-- Привязка клавиши для переключения скрипта
 local MainKeybind = Tabs.Features:AddKeybind("MainKeybind", {
     Title = "Toggle Script",
     Mode = "Toggle",
     Default = "F",
-    Callback = function(Value)
-        Functions.toggleScript(Value)
+    Callback = function(value)
+        Functions.toggleScript(value)
     end
 })
 
--- Поле ввода
+-- Ввод имени игрока
 local PlayerInput = Tabs.Features:AddInput("PlayerInput", {
     Title = "Player Name",
     Default = "",
     Placeholder = "Enter player name...",
     Numeric = false,
     Finished = false,
-    Callback = function(Value)
-        Functions.setTargetPlayer(Value)
+    Callback = function(value)
+        Functions.setTargetPlayer(value)
     end
 })
 
--- Цветовая палитра
+-- Цветовая палитра для темы
 local ColorPicker = Tabs.Features:AddColorpicker("ColorPicker", {
     Title = "Theme Color",
     Default = Color3.fromRGB(96, 205, 255)
@@ -120,8 +118,44 @@ ColorPicker:OnChanged(function()
     Functions.setThemeColor(ColorPicker.Value)
 end)
 
+-- === ESP Box Settings ===
+
+local BoxTypeDropdown = Tabs.Features:AddDropdown("BoxTypeDropdown", {
+    Title = "Box Type",
+    Values = {"2D Box", "3D Box", "Corner Box"},
+    Default = 1
+})
+
+BoxTypeDropdown:OnChanged(function(value)
+    ESP.BoxType = value
+end)
+
+local BoxThicknessSlider = Tabs.Features:AddSlider("BoxThicknessSlider", {
+    Title = "Box Thickness",
+    Min = 1,
+    Max = 5,
+    Default = 2,
+    Rounding = 0
+})
+
+BoxThicknessSlider:OnChanged(function(value)
+    ESP.BoxThickness = value
+end)
+
+local BoxTransparencySlider = Tabs.Features:AddSlider("BoxTransparencySlider", {
+    Title = "Box Transparency",
+    Min = 0,
+    Max = 1,
+    Default = 0.5,
+    Rounding = 0.1
+})
+
+BoxTransparencySlider:OnChanged(function(value)
+    ESP.BoxTransparency = value
+end)
+
 -- === SETTINGS TAB ===
--- Менеджеры конфигурации
+
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 
@@ -146,3 +180,10 @@ Fluent:Notify({
     Content = "All features loaded successfully.",
     Duration = 3
 })
+
+return {
+    Window = Window,
+    Tabs = Tabs,
+    Options = Options,
+    ESP = ESP
+}
