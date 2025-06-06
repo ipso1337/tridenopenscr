@@ -3,15 +3,12 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- Загрузка функций
-local Functions = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/main/functions.lua"))()
-
 -- Загрузка BoxESP
 local BoxESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/main/BoxESP.lua"))()
 
 -- Создание окна
 local Window = Fluent:CreateWindow({
-    Title = "Triden Client",
+    Title = "Triden ESP Suite",
     SubTitle = "by ipso1337",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
@@ -22,8 +19,8 @@ local Window = Fluent:CreateWindow({
 
 -- Вкладки
 local Tabs = {
-    Main = Window:AddTab({ Title = "Main", Icon = "" }),
-    Features = Window:AddTab({ Title = "Features", Icon = "zap" }),
+    Main = Window:AddTab({ Title = "Main", Icon = "home" }),
+    ESP = Window:AddTab({ Title = "ESP Settings", Icon = "eye" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
@@ -31,52 +28,77 @@ local Options = Fluent.Options
 
 -- Уведомление при загрузке
 Fluent:Notify({
-    Title = "Script Loaded",
-    Content = "Triden Client успешно загружен!",
+    Title = "Triden ESP Loaded",
+    Content = "Press LeftControl to minimize the UI.",
     Duration = 5
 })
 
 -- === MAIN TAB ===
 Tabs.Main:AddParagraph({
     Title = "Добро пожаловать!",
-    Content = "Это твой кастомный Roblox скрипт.\nПриятного использования!"
+    Content = "Используйте вкладку **ESP Settings** для настройки визуализации."
 })
 
--- === FEATURES TAB ===
-Tabs.Features:AddToggle("BoxESP_Toggle", {
-    Title = "Box ESP",
+-- === ESP TAB ===
+-- Включение/выключение ESP
+Tabs.ESP:AddToggle("ESPEnabled", {
+    Title = "Enable ESP",
     Default = false
 }):OnChanged(function(state)
     BoxESP:Toggle(state)
 end)
 
-Tabs.Features:AddDropdown("BoxESP_Mode", {
-    Title = "Box Type",
+-- Выбор типа ESP
+Tabs.ESP:AddDropdown("ESPType", {
+    Title = "ESP Type",
     Values = {"Box", "Corner", "3D Box"},
-    Multi = false,
-    Default = 1
-}):OnChanged(function(mode)
-    BoxESP:SetBoxType(mode)
+    Default = "Box",
+}):OnChanged(function(value)
+    BoxESP:SetBoxType(value)
 end)
+
+-- Цвет ESP
+local ColorPicker = Tabs.ESP:AddColorpicker("ESPColor", {
+    Title = "ESP Color",
+    Default = Color3.fromRGB(96, 205, 255) -- Голубой по умолчанию
+})
+
+ColorPicker:OnChanged(function()
+    BoxESP:SetColor(ColorPicker.Value)
+end)
+
+-- Настройка прозрачности
+Tabs.ESP:AddSlider("ESPTransparency", {
+    Title = "Transparency",
+    Default = 0,
+    Min = 0,
+    Max = 1,
+    Rounding = 1,
+    Callback = function(value)
+        BoxESP:SetTransparency(value)
+    end
+})
+
+-- Показывать только видимых игроков
+Tabs.ESP:AddToggle("ESPVisibleOnly", {
+    Title = "Visible Only",
+    Default = false,
+    Callback = function(state)
+        BoxESP:SetVisibleOnly(state)
+    end
+})
 
 -- === SETTINGS TAB ===
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
-
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-
-InterfaceManager:SetFolder("TridenClient")
-SaveManager:SetFolder("TridenClient/configs")
+InterfaceManager:SetFolder("TridenESP")
+SaveManager:SetFolder("TridenESP/configs")
 
 InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 
+-- Загрузка сохраненных настроек
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
-
-Fluent:Notify({
-    Title = "Готово!",
-    Content = "Все функции успешно загружены.",
-    Duration = 3
-})
