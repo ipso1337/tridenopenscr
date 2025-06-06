@@ -6,7 +6,10 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 -- Загрузка BoxESP
 local BoxESP = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/main/BoxESP.lua"))()
 
--- Создание окна
+-- Загрузка PlayerBody класса
+local PlayerBody = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/refs/heads/main/PlayerBody.lua"))()
+
+-- === СОЗДАНИЕ ОКНА ===
 local Window = Fluent:CreateWindow({
     Title = "Triden ESP Suite",
     SubTitle = "by ipso1337",
@@ -21,10 +24,15 @@ local Window = Fluent:CreateWindow({
 local Tabs = {
     Main = Window:AddTab({ Title = "Main", Icon = "home" }),
     ESP = Window:AddTab({ Title = "ESP Settings", Icon = "eye" }),
+    PlayerBody = Window:AddTab({ Title = "Player Body", Icon = "user" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
 local Options = Fluent.Options
+
+-- === СОЗДАНИЕ ЭКЗЕМПЛЯРА PLAYERBODY ===
+local playerBody = PlayerBody.new(game.Players.LocalPlayer)
+playerBody:ConnectCharacterAdded()
 
 -- Уведомление при загрузке
 Fluent:Notify({
@@ -36,7 +44,7 @@ Fluent:Notify({
 -- === MAIN TAB ===
 Tabs.Main:AddParagraph({
     Title = "Добро пожаловать!",
-    Content = "Используйте вкладку **ESP Settings** для настройки визуализации."
+    Content = "Используйте вкладку **ESP Settings** для настройки визуализации.\nВкладка **Player Body** для управления телом игрока."
 })
 
 -- === ESP TAB ===
@@ -62,7 +70,6 @@ local ColorPicker = Tabs.ESP:AddColorpicker("ESPColor", {
     Title = "ESP Color",
     Default = Color3.fromRGB(96, 205, 255) -- Голубой по умолчанию
 })
-
 ColorPicker:OnChanged(function()
     BoxESP:SetColor(ColorPicker.Value)
 end)
@@ -88,11 +95,25 @@ Tabs.ESP:AddToggle("ESPVisibleOnly", {
     end
 })
 
+-- === PLAYER BODY TAB ===
+-- Используем встроенный метод для создания контролов
+playerBody:CreateFluentControls(Tabs.PlayerBody)
+
+-- Дополнительный цветовой контрол
+local BodyColorPicker = Tabs.PlayerBody:AddColorpicker("BodyColor", {
+    Title = "Цвет тела",
+    Default = Color3.fromRGB(163, 162, 165) -- Стандартный цвет тела
+})
+BodyColorPicker:OnChanged(function()
+    playerBody:SetColor(BodyColorPicker.Value)
+end)
+
 -- === SETTINGS TAB ===
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
+
 InterfaceManager:SetFolder("TridenESP")
 SaveManager:SetFolder("TridenESP/configs")
 
@@ -102,3 +123,10 @@ SaveManager:BuildConfigSection(Tabs.Settings)
 -- Загрузка сохраненных настроек
 Window:SelectTab(1)
 SaveManager:LoadAutoloadConfig()
+
+-- Финальное уведомление
+Fluent:Notify({
+    Title = "Все готово!",
+    Content = "PlayerBody класс зарегистрирован и готов к использованию.",
+    Duration = 4
+})
