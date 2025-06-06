@@ -2,57 +2,50 @@ local ESP = {
     Players = {},
     Objects = {},
     Settings = {
-        Enabled = false,
-        Box = {
+        Players = {
             Enabled = false,
-            Color = Color3.new(1, 1, 1),
-            Fill = false,
-            FillColor = Color3.new(1, 0, 0),
-            Transparency = 0.5
+            Box = true,
+            BoxColor = Color3.new(1, 1, 1),
+            Names = true,
+            Health = true,
+            Chams = false,
+            ChamsColor = Color3.fromRGB(255, 0, 255)
         },
-        Skeleton = {
+        Objects = {
             Enabled = false,
-            Color = Color3.new(1, 1, 1)
-        },
-        Chams = {
-            Enabled = false,
-            Color = Color3.new(1, 0, 1),
-            Transparency = 0.5
-        },
-        ObjectESP = {
-            Enabled = false,
-            Filter = {}
+            Filter = {"Stone", "Nitrate", "Iron"},
+            Color = Color3.fromRGB(0, 255, 255)
         }
-    }
+    },
+    Connections = {},
+    Drawings = {}
 }
 
--- Инициализация
+-- Core Functions
 function ESP.Init()
-    -- Создаем подключения к игре
-    game:GetService("Workspace").ChildAdded:Connect(function(child)
-        ESP.AddChild(child)
-    end)
-
-    game:GetService("Workspace").ChildRemoved:Connect(function(child)
-        ESP.RemoveChild(child)
-    end)
-
-    -- Инициализируем существующие объекты
+    -- Set up connections
+    ESP.Connections.ChildAdded = game:GetService("Workspace").ChildAdded:Connect(ESP.AddChild)
+    ESP.Connections.ChildRemoved = game:GetService("Workspace").ChildRemoved:Connect(ESP.RemoveChild)
+    
+    -- Initialize existing objects
     for _, child in pairs(game:GetService("Workspace"):GetChildren()) do
-        ESP.AddChild(child)
+        task.spawn(ESP.AddChild, child)
     end
+    
+    -- Start update loop
+    ESP.Connections.Update = game:GetService("RunService").RenderStepped:Connect(function()
+        ESP.Update()
+    end)
 end
 
--- Добавление объекта
 function ESP.AddChild(child)
     if child:FindFirstChild("Humanoid") then
         ESP.CreatePlayerESP(child)
-    elseif table.find({"Stone", "Nitrate", "Iron"}, child.Name) then
+    elseif table.find(ESP.Settings.Objects.Filter, child.Name) then
         ESP.CreateObjectESP(child)
     end
 end
 
--- Создание ESP для игрока
 function ESP.CreatePlayerESP(character)
     local esp = {
         Box = Drawing.new("Square"),
@@ -61,78 +54,107 @@ function ESP.CreatePlayerESP(character)
         Chams = Instance.new("Highlight")
     }
     
-    -- Настройка внешнего вида
+    -- Configure visuals
     esp.Box.Visible = false
-    esp.Box.Color = ESP.Settings.Box.Color
-    esp.Box.Thickness = 1
+    esp.Box.Color = ESP.Settings.Players.BoxColor
+    esp.Box.Thickness = 2
+    esp.Box.Filled = false
     
-    -- Добавляем в таблицу
+    esp.Name.Visible = false
+    esp.Name.Color = Color3.new(1, 1, 1)
+    esp.Name.Size = 14
+    esp.Name.Center = true
+    
+    esp.Health.Visible = false
+    esp.Health.Color = Color3.new(0, 1, 0)
+    esp.Health.Size = 14
+    esp.Health.Center = true
+    
+    esp.Chams.Enabled = false
+    esp.Chams.FillColor = ESP.Settings.Players.ChamsColor
+    esp.Chams.FillTransparency = 0.5
+    esp.Chams.OutlineColor = Color3.new(1, 1, 1)
+    esp.Chams.OutlineTransparency = 1
+    esp.Chams.Adornee = character
+    esp.Chams.Parent = game:GetService("CoreGui")
+    
     ESP.Players[character] = esp
 end
 
--- Обновление ESP
 function ESP.Update()
+    -- Update players
     for character, esp in pairs(ESP.Players) do
-        if character:IsDescendantOf(workspace) then
+        if character.Parent then
             local head = character:FindFirstChild("Head")
             if head then
-                local position, onScreen = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(head.Position)
+                local pos, onScreen = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(head.Position)
                 
                 if onScreen then
-                    -- Обновляем позиции элементов ESP
-                    esp.Box.Position = Vector2.new(position.X, position.Y)
+                    -- Box ESP
+                    esp.Box.Visible = ESP.Settings.Players.Enabled and ESP.Settings.Players.Box
+                    esp.Box.Position = Vector2.new(pos.X - 25, pos.Y - 50)
                     esp.Box.Size = Vector2.new(50, 80)
-                    esp.Box.Visible = ESP.Settings.Enabled and ESP.Settings.Box.Enabled
                     
-                    -- Обновляем чамсы
-                    if esp.Chams then
-                        esp.Chams.Enabled = ESP.Settings.Chams.Enabled
-                        esp.Chams.FillColor = ESP.Settings.Chams.Color
-                        esp.Chams.FillTransparency = ESP.Settings.Chams.Transparency
-                        esp.Chams.Adornee = character
-                    end
+                    -- Name ESP
+                    esp.Name.Visible = ESP.Settings.Players.Enabled and ESP.Settings.Players.Names
+                    esp.Name.Position = Vector2.new(pos.X, pos.Y - 60)
+                    esp.Name.Text = character.Name
+                    
+                    -- Health ESP
+                    esp.Health.Visible = ESP.Settings.Players.Enabled and ESP.Settings.Players.Health
+                    esp.Health.Position = Vector2.new(pos.X, pos.Y + 40)
+                    esp.Health.Text = tostring(math.floor(character.Humanoid.Health)) .. "/" .. tostring(character.Humanoid.MaxHealth)
+                    
+                    -- Chams
+                    esp.Chams.Enabled = ESP.Settings.Players.Enabled and ESP.Settings.Players.Chams
                 else
                     esp.Box.Visible = false
-                    if esp.Chams then
-                        esp.Chams.Enabled = false
-                    end
+                    esp.Name.Visible = false
+                    esp.Health.Visible = false
+                    esp.Chams.Enabled = false
                 end
             end
         else
-            -- Удаляем если персонаж больше не существует
             ESP.RemoveChild(character)
         end
     end
-end
-
--- API для GUI
-function ESP.TogglePlayerESP(Value)
-    ESP.Settings.Enabled = Value
-    if not Value then
-        ESP.ClearPlayers()
-    end
-end
-
-function ESP.ToggleBoxESP(Value)
-    ESP.Settings.Box.Enabled = Value
-end
-
-function ESP.SetBoxColor(Color)
-    ESP.Settings.Box.Color = Color
-    for _, esp in pairs(ESP.Players) do
-        esp.Box.Color = Color
-    end
-end
-
--- Основной цикл
-task.spawn(function()
-    ESP.Init()
-    while true do
-        if ESP.Settings.Enabled then
-            ESP.Update()
+    
+    -- Update objects
+    for object, drawing in pairs(ESP.Objects) do
+        if object.Parent then
+            local pos, onScreen = game:GetService("Workspace").CurrentCamera:WorldToViewportPoint(object.Position)
+            
+            if onScreen then
+                drawing.Visible = ESP.Settings.Objects.Enabled
+                drawing.Position = Vector2.new(pos.X, pos.Y)
+                drawing.Text = object.Name
+            else
+                drawing.Visible = false
+            end
+        else
+            ESP.RemoveChild(object)
         end
-        task.wait(0.1)
     end
-end)
+end
+
+-- API for GUI
+function ESP.Toggle(category, value)
+    ESP.Settings[category].Enabled = value
+    if not value then
+        ESP.Clear(category)
+    end
+end
+
+function ESP.ToggleSetting(category, setting, value)
+    ESP.Settings[category][setting] = value
+end
+
+function ESP.UpdateSetting(category, setting, value)
+    ESP.Settings[category][setting] = value
+    ESP.UpdateAllVisuals()
+end
+
+-- Initialize
+ESP.Init()
 
 return ESP
