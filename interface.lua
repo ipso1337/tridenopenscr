@@ -4,7 +4,7 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 -- Загрузка функций (замените YOUR_USERNAME и YOUR_REPO_NAME на свои)
-local Functions = loadstring(game:HttpGet("https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO_NAME/main/functions.lua"))()
+local Functions = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/refs/heads/main/functions.lua"))()
 
 -- Создание окна
 local Window = Fluent:CreateWindow({
