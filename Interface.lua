@@ -1,106 +1,121 @@
 local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
-local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/ipso1337/tridenopenscr/main/ESPModule.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "SWIMHUB ESP",
-    SubTitle = "by swimhub.xyz",
+    Title = "TRIDENT ESP v2.0",
+    SubTitle = "by ipso1337",
     TabWidth = 160,
-    Size = UDim2.fromOffset(580, 580),
+    Size = UDim2.fromOffset(600, 500),
     Acrylic = true,
     Theme = "Dark"
 })
 
 local Tabs = {
-    ESP = Window:AddTab({ Title = "Player ESP", Icon = "user" }),
+    PlayerESP = Window:AddTab({ Title = "Player ESP", Icon = "user" }),
     ObjectESP = Window:AddTab({ Title = "Object ESP", Icon = "package" }),
-    Config = Window:AddTab({ Title = "Config", Icon = "settings" })
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- Загрузка модуля ESP
-local ESPModule = loadstring(game:HttpGet("https://raw.githubusercontent.com/yourrepo/ESPModule.lua"))()
-
--- Вкладка Player ESP
+-- Player ESP Tab
 do
-    -- Основные настройки
-    Tabs.ESP:AddToggle("ESPEnabled", {
-        Title = "Enable ESP",
+    -- Main toggle
+    Tabs.PlayerESP:AddToggle("PlayerESPEnabled", {
+        Title = "Enable Player ESP",
         Default = false,
-        Callback = function(Value)
-            ESPModule.TogglePlayerESP(Value)
+        Callback = function(value)
+            ESPModule.Toggle("Players", value)
         end
     })
 
-    Tabs.ESP:AddDropdown("ESPFont", {
-        Title = "Font",
-        Values = {"UI", "System", "Plex", "Monospace"},
-        Default = 4,
-        Callback = function(Value)
-            ESPModule.SetFont(Value)
-        end
-    })
-
-    -- Настройки боксов
-    local BoxToggle = Tabs.ESP:AddToggle("BoxESP", {
+    -- Box ESP
+    local BoxToggle = Tabs.PlayerESP:AddToggle("BoxESP", {
         Title = "Box ESP",
         Default = false,
-        Callback = function(Value)
-            ESPModule.ToggleBoxESP(Value)
+        Callback = function(value)
+            ESPModule.ToggleSetting("Players", "Box", value)
         end
     })
-
+    
     BoxToggle:AddColorPicker("BoxColor", {
+        Title = "Box Color",
         Default = Color3.new(1, 1, 1),
-        Callback = function(Value)
-            ESPModule.SetBoxColor(Value)
+        Callback = function(color)
+            ESPModule.UpdateSetting("Players", "BoxColor", color)
         end
     })
 
-    -- Настройки скелетона
-    Tabs.ESP:AddToggle("SkeletonESP", {
-        Title = "Skeleton ESP",
-        Default = false,
-        Callback = function(Value)
-            ESPModule.ToggleSkeletonESP(Value)
+    -- Name ESP
+    Tabs.PlayerESP:AddToggle("NameESP", {
+        Title = "Show Names",
+        Default = true,
+        Callback = function(value)
+            ESPModule.ToggleSetting("Players", "Names", value)
         end
     })
 
-    -- Настройки чамсов
-    Tabs.ESP:AddToggle("ChamsEnabled", {
+    -- Health ESP
+    Tabs.PlayerESP:AddToggle("HealthESP", {
+        Title = "Show Health",
+        Default = true,
+        Callback = function(value)
+            ESPModule.ToggleSetting("Players", "Health", value)
+        end
+    })
+
+    -- Chams
+    local ChamsToggle = Tabs.PlayerESP:AddToggle("Chams", {
         Title = "Chams",
         Default = false,
-        Callback = function(Value)
-            ESPModule.ToggleChams(Value)
+        Callback = function(value)
+            ESPModule.ToggleSetting("Players", "Chams", value)
+        end
+    })
+    
+    ChamsToggle:AddColorPicker("ChamsColor", {
+        Title = "Chams Color",
+        Default = Color3.fromRGB(255, 0, 255),
+        Callback = function(color)
+            ESPModule.UpdateSetting("Players", "ChamsColor", color)
         end
     })
 end
 
--- Вкладка Object ESP
+-- Object ESP Tab
 do
     Tabs.ObjectESP:AddToggle("ObjectESPEnabled", {
         Title = "Enable Object ESP",
         Default = false,
-        Callback = function(Value)
-            ESPModule.ToggleObjectESP(Value)
+        Callback = function(value)
+            ESPModule.Toggle("Objects", value)
         end
     })
 
-    Tabs.ObjectESP:AddDropdown("ObjectsFilter", {
-        Title = "Objects Filter",
-        Values = {"Stone", "Nitrate", "Iron", "Tree", "ATV"},
+    Tabs.ObjectESP:AddDropdown("ObjectTypes", {
+        Title = "Object Types",
+        Values = {"Stone", "Nitrate", "Iron", "Tree", "ATV", "Backpack"},
         Multi = true,
-        Default = {},
-        Callback = function(Value)
-            ESPModule.SetObjectFilter(Value)
+        Default = {"Stone", "Nitrate", "Iron"},
+        Callback = function(selected)
+            ESPModule.UpdateSetting("Objects", "Filter", selected)
+        end
+    })
+
+    Tabs.ObjectESP:AddColorPicker("ObjectColor", {
+        Title = "Object Color",
+        Default = Color3.fromRGB(0, 255, 255),
+        Callback = function(color)
+            ESPModule.UpdateSetting("Objects", "Color", color)
         end
     })
 end
 
--- Настройки конфигурации
-InterfaceManager:BuildInterfaceSection(Tabs.Config)
-SaveManager:BuildConfigSection(Tabs.Config)
+-- Settings Tab
 SaveManager:SetLibrary(Fluent)
+InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
-SaveManager:SetFolder("SWIMHUB_ESP")
+
+InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+SaveManager:BuildConfigSection(Tabs.Settings)
 
 Window:SelectTab(1)
