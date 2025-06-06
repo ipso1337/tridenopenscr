@@ -9,7 +9,7 @@ local boxColor = Color3.fromRGB(0, 255, 0)
 local transparency = 0
 local visibleOnly = false
 local maxDistance = 1000
-local targetName = "Model" -- Название объекта для поиска
+local targetPath = "Workspace.Model" -- Путь к объекту для поиска
 local showText = true
 local textSize = 16
 
@@ -112,92 +112,107 @@ local function isModelVisible(model, center)
     return hit and hit:IsDescendantOf(model)
 end
 
+-- Получение объекта по пути
+local function getObjectByPath(path)
+    local parts = string.split(path, ".")
+    local current = game
+    
+    for _, part in pairs(parts) do
+        if current:FindFirstChild(part) then
+            current = current[part]
+        else
+            return nil
+        end
+    end
+    
+    return current
+end
+
 -- Обновление ESP
 local function updateESP()
     if not enabled then return end
     
     if not Camera then return end
     
-    for _, obj in pairs(workspace:GetChildren()) do
-        if obj:IsA("Model") and obj.Name == targetName then
-            local center, size = getModelBounds(obj)
-            if not center then continue end
-            
-            -- Проверяем дистанцию
-            local distance = (Camera.CFrame.Position - center).Magnitude
-            if distance > maxDistance then continue end
-            
-            if not espDrawings[obj] then
-                createESP(obj)
-            end
+    local obj = getObjectByPath(targetPath)
+    if obj and obj:IsA("Model") then
+        local center, size = getModelBounds(obj)
+        if not center then return end
+        
+        -- Проверяем дистанцию
+        local distance = (Camera.CFrame.Position - center).Magnitude
+        if distance > maxDistance then return end
+        
+        if not espDrawings[obj] then
+            createESP(obj)
+        end
 
-            local drawings = espDrawings[obj]
-            local vector, onScreen = Camera:WorldToViewportPoint(center)
-            local isVisible = isModelVisible(obj, center)
+        local drawings = espDrawings[obj]
+        local vector, onScreen = Camera:WorldToViewportPoint(center)
+        local isVisible = isModelVisible(obj, center)
 
-            if onScreen and isVisible then
-                -- Вычисляем размер на экране
-                local topPoint = Camera:WorldToViewportPoint(center + Vector3.new(0, size.Y/2, 0))
-                local bottomPoint = Camera:WorldToViewportPoint(center - Vector3.new(0, size.Y/2, 0))
-                local leftPoint = Camera:WorldToViewportPoint(center - Vector3.new(size.X/2, 0, 0))
-                local rightPoint = Camera:WorldToViewportPoint(center + Vector3.new(size.X/2, 0, 0))
+        if onScreen and isVisible then
+            -- Вычисляем размер на экране
+            local topPoint = Camera:WorldToViewportPoint(center + Vector3.new(0, size.Y/2, 0))
+            local bottomPoint = Camera:WorldToViewportPoint(center - Vector3.new(0, size.Y/2, 0))
+            local leftPoint = Camera:WorldToViewportPoint(center - Vector3.new(size.X/2, 0, 0))
+            local rightPoint = Camera:WorldToViewportPoint(center + Vector3.new(size.X/2, 0, 0))
+            
+            local h = math.abs(topPoint.Y - bottomPoint.Y)
+            local w = math.abs(rightPoint.X - leftPoint.X)
+
+            if boxType == "Box" and drawings.box then
+                drawings.box.Size = Vector2.new(w, h)
+                drawings.box.Position = Vector2.new(vector.X - w/2, vector.Y - h/2)
+                drawings.box.Visible = true
+            elseif boxType == "Corner" and drawings.corners then
+                local cornerSize = math.min(w, h) * 0.2
+                local topLeft = Vector2.new(vector.X - w/2, vector.Y - h/2)
+                local topRight = Vector2.new(vector.X + w/2, vector.Y - h/2)
+                local bottomLeft = Vector2.new(vector.X - w/2, vector.Y + h/2)
+                local bottomRight = Vector2.new(vector.X + w/2, vector.Y + h/2)
                 
-                local h = math.abs(topPoint.Y - bottomPoint.Y)
-                local w = math.abs(rightPoint.X - leftPoint.X)
-
-                if boxType == "Box" and drawings.box then
-                    drawings.box.Size = Vector2.new(w, h)
-                    drawings.box.Position = Vector2.new(vector.X - w/2, vector.Y - h/2)
-                    drawings.box.Visible = true
-                elseif boxType == "Corner" and drawings.corners then
-                    local cornerSize = math.min(w, h) * 0.2
-                    local topLeft = Vector2.new(vector.X - w/2, vector.Y - h/2)
-                    local topRight = Vector2.new(vector.X + w/2, vector.Y - h/2)
-                    local bottomLeft = Vector2.new(vector.X - w/2, vector.Y + h/2)
-                    local bottomRight = Vector2.new(vector.X + w/2, vector.Y + h/2)
-                    
-                    -- Верхний левый угол
-                    drawings.corners[1].From = topLeft
-                    drawings.corners[1].To = Vector2.new(topLeft.X + cornerSize, topLeft.Y)
-                    drawings.corners[2].From = topLeft
-                    drawings.corners[2].To = Vector2.new(topLeft.X, topLeft.Y + cornerSize)
-                    
-                    -- Верхний правый угол
-                    drawings.corners[3].From = topRight
-                    drawings.corners[3].To = Vector2.new(topRight.X - cornerSize, topRight.Y)
-                    drawings.corners[4].From = topRight
-                    drawings.corners[4].To = Vector2.new(topRight.X, topRight.Y + cornerSize)
-                    
-                    -- Нижний левый угол
-                    drawings.corners[5].From = bottomLeft
-                    drawings.corners[5].To = Vector2.new(bottomLeft.X + cornerSize, bottomLeft.Y)
-                    drawings.corners[6].From = bottomLeft
-                    drawings.corners[6].To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerSize)
-                    
-                    -- Нижний правый угол
-                    drawings.corners[7].From = bottomRight
-                    drawings.corners[7].To = Vector2.new(bottomRight.X - cornerSize, bottomRight.Y)
-                    drawings.corners[8].From = bottomRight
-                    drawings.corners[8].To = Vector2.new(bottomRight.X, bottomRight.Y - cornerSize)
-                    
-                    for i = 1, 8 do
-                        drawings.corners[i].Visible = true
-                    end
+                -- Верхний левый угол
+                drawings.corners[1].From = topLeft
+                drawings.corners[1].To = Vector2.new(topLeft.X + cornerSize, topLeft.Y)
+                drawings.corners[2].From = topLeft
+                drawings.corners[2].To = Vector2.new(topLeft.X, topLeft.Y + cornerSize)
+                
+                -- Верхний правый угол
+                drawings.corners[3].From = topRight
+                drawings.corners[3].To = Vector2.new(topRight.X - cornerSize, topRight.Y)
+                drawings.corners[4].From = topRight
+                drawings.corners[4].To = Vector2.new(topRight.X, topRight.Y + cornerSize)
+                
+                -- Нижний левый угол
+                drawings.corners[5].From = bottomLeft
+                drawings.corners[5].To = Vector2.new(bottomLeft.X + cornerSize, bottomLeft.Y)
+                drawings.corners[6].From = bottomLeft
+                drawings.corners[6].To = Vector2.new(bottomLeft.X, bottomLeft.Y - cornerSize)
+                
+                -- Нижний правый угол
+                drawings.corners[7].From = bottomRight
+                drawings.corners[7].To = Vector2.new(bottomRight.X - cornerSize, bottomRight.Y)
+                drawings.corners[8].From = bottomRight
+                drawings.corners[8].To = Vector2.new(bottomRight.X, bottomRight.Y - cornerSize)
+                
+                for i = 1, 8 do
+                    drawings.corners[i].Visible = true
                 end
-
-                if drawings.text then
-                    drawings.text.Position = Vector2.new(vector.X, vector.Y - h/2 - 25)
-                    drawings.text.Visible = true
-                end
-            else
-                if drawings.box then drawings.box.Visible = false end
-                if drawings.corners then
-                    for _, corner in pairs(drawings.corners) do
-                        corner.Visible = false
-                    end
-                end
-                if drawings.text then drawings.text.Visible = false end
             end
+
+            if drawings.text then
+                drawings.text.Position = Vector2.new(vector.X, vector.Y - h/2 - 25)
+                drawings.text.Visible = true
+            end
+        else
+            if drawings.box then drawings.box.Visible = false end
+            if drawings.corners then
+                for _, corner in pairs(drawings.corners) do
+                    corner.Visible = false
+                end
+            end
+            if drawings.text then drawings.text.Visible = false end
         end
     end
 end
@@ -236,8 +251,8 @@ function ModelESP:Disable()
     espDrawings = {}
 end
 
-function ModelESP:SetTargetName(name)
-    targetName = name
+function ModelESP:SetTargetPath(path)
+    targetPath = path
     -- Сброс ESP при смене цели
     if enabled then
         self:Disable()
