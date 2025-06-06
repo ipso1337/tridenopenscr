@@ -1,0 +1,141 @@
+--[[
+    ИНТЕРФЕЙС НА FLUENT UI (интерфейс.lua)
+    Только UI, логика берётся из модуля выше.
+]]--
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
+local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
+
+-- Загружаем логику
+local Logic = loadfile("логика.lua")() -- если файл в той же папке
+
+-- Создаём окно Fluent
+local Window = Fluent:CreateWindow({
+    Title = "SwimHub",
+    SubTitle = "by swimhub.xyz",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(580, 460),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightShift
+})
+
+-- Вкладки
+local Tabs = {
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    World = Window:AddTab({ Title = "World", Icon = "globe" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+local Options = Fluent.Options
+
+-- =============================================
+-- Вкладка Visuals (ESP)
+-- =============================================
+do
+    local ESPGroup = Tabs.Visuals:AddLeftGroupbox("Player ESP")
+
+    -- Включение ESP
+    ESPGroup:AddToggle("ESPEnabled", {
+        Title = "Enable ESP",
+        Default = Logic.ESP.Enabled,
+        Callback = function(state)
+            Logic.ESP:Toggle(state)
+        end
+    })
+
+    -- Настройки боксов
+    ESPGroup:AddToggle("ESPBox", {
+        Title = "Box ESP",
+        Default = Logic.ESP.Settings.Box,
+        Callback = function(state)
+            Logic.ESP.Settings.Box = state
+        end
+    })
+
+    ESPGroup:AddColorpicker("ESPBoxColor", {
+        Title = "Box Color",
+        Default = Logic.ESP.Settings.BoxColor,
+        Callback = function(color)
+            Logic.ESP.Settings.BoxColor = color
+        end
+    })
+
+    -- Чампы
+    ESPGroup:AddToggle("ESPChams", {
+        Title = "Chams",
+        Default = Logic.ESP.Settings.Chams,
+        Callback = function(state)
+            Logic.ESP.Settings.Chams = state
+        end
+    })
+
+    ESPGroup:AddColorpicker("ESPChamsColor", {
+        Title = "Chams Color",
+        Default = Logic.ESP.Settings.ChamsColor,
+        Callback = function(color)
+            Logic.ESP.Settings.ChamsColor = color
+        end
+    })
+end
+
+-- =============================================
+-- Вкладка World (Освещение)
+-- =============================================
+do
+    local WorldGroup = Tabs.World:AddLeftGroupbox("Lighting")
+
+    -- Изменение времени суток
+    WorldGroup:AddToggle("TimeChangerEnabled", {
+        Title = "Time Changer",
+        Default = Logic.TimeChanger.Enabled,
+        Callback = function(state)
+            Logic.TimeChanger:Toggle(state)
+        end
+    })
+
+    WorldGroup:AddSlider("TimeOfDay", {
+        Title = "Time",
+        Min = 0,
+        Max = 24,
+        Default = Logic.TimeChanger.Time,
+        Rounding = 1,
+        Callback = function(value)
+            Logic.TimeChanger.Time = value
+        end
+    })
+end
+
+-- =============================================
+-- Вкладка Settings (Настройки)
+-- =============================================
+do
+    local SettingsGroup = Tabs.Settings:AddLeftGroupbox("Menu")
+
+    -- Кнопка выгрузки
+    SettingsGroup:AddButton({
+        Title = "Unload UI",
+        Callback = function()
+            -- Очищаем ESP перед выгрузкой
+            Logic.ESP:Toggle(false)
+            Logic.TimeChanger:Toggle(false)
+            Fluent:Unload()
+        end
+    })
+
+    -- Настройки сохранения
+    SaveManager:SetLibrary(Fluent)
+    InterfaceManager:SetLibrary(Fluent)
+    SaveManager:IgnoreThemeSettings()
+    InterfaceManager:SetFolder("SwimHub")
+    SaveManager:SetFolder("SwimHub/Configs")
+    InterfaceManager:BuildInterfaceSection(Tabs.Settings)
+    SaveManager:BuildConfigSection(Tabs.Settings)
+end
+
+-- Загружаем сохранённые настройки
+SaveManager:LoadAutoloadConfig()
+
+-- Открываем первую вкладку
+Window:SelectTab(1)
